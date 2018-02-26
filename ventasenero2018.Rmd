@@ -1,0 +1,336 @@
+---
+title: "Reporte de Ventas Digitales"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    theme: yeti
+    navbar:
+      - {title: "Inteligencia Comercial"}
+---
+
+# Reporte de Ventas Digitales - Enero 2018 {.sidebar}
+
+Datos a considerar:
+
+* Los montos que se registran están determinados por la facturación, puede existir diferencias con otros reportes de ventas donde se consideran otros ajustes.
+* No se esta considerando canje.
+* Se esta considerando la venta cruzada, venta que se ofreció como bonificación por pauta print, pero que en la facturación se asigno ingresos.
+
+
+```{r echo=FALSE, message=FALSE}
+datos<-read.csv('datos.csv',header=TRUE,sep=";")
+
+datos$mes<-ordered(datos$mes, levels=c("Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Setiembre","Octubre","Noviembre","Diciembre"))
+
+library(lubridate)
+library(dplyr)
+datos<-datos %>% mutate(anmes=make_date(año,mes))
+Enero<-subset(datos,mes=="Enero")
+
+fx6um<-function(x){
+  k<-0
+  n<-length(x)
+  for (i in 1:n){
+  if(x[i] <= "2017-01-01" & x[i] >="2016-08-01"){
+    k[i] = "Aug. 2016 - Ene. 2017"
+  }
+    else{
+      if(x[i] <= "2018-01-01" & x[i] >="2017-08-01"){
+        k[i] = "Aug. 2017 - Ene. 2018"
+      }
+      else{
+        k[i] = ""
+      }      
+    }
+  }
+  return(k)
+}
+
+datos<-datos %>% mutate(nuevoperiodo=fx6um(anmes))
+EneroAcum<-datos[ which(datos$nuevoperiodo=='Aug. 2016 - Ene. 2017' | datos$nuevoperiodo == 'Aug. 2017 - Ene. 2018'), ]
+```
+
+# Enero 2018
+
+## Fila 1  {.tabset .tabset-fade}
+
+### 1. General 
+
+#### **VENTA GENERAL (en MM de soles)**
+
+```{r}
+grupo1<-group_by(Enero, año)        
+r1<-summarize(grupo1, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000000,1))
+grupo2<-group_by(EneroAcum, nuevoperiodo)        
+r2<-summarize(grupo2, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000000,1))
+
+library(highcharter)
+
+g1<-highchart() %>% 
+  hc_chart(type = "column") %>% 
+  hc_title(text = "Enero") %>% 
+  hc_xAxis(categories = as.factor(r1$año)) %>% 
+  hc_add_series(data = r1$netosinrecfin_soles1, name = "Ingresos netos sin recargo financiero") %>%
+  hc_exporting(enabled = TRUE)
+
+g2<-highchart() %>% 
+  hc_chart(type = "column") %>% 
+  hc_title(text = "Últimos 6 meses") %>% 
+  hc_xAxis(categories = as.factor(r2$nuevoperiodo)) %>% 
+  hc_add_series(data = r2$netosinrecfin_soles1, name = "Ingresos netos sin recargo financiero") %>%
+  hc_exporting(enabled = TRUE)
+
+hw_grid(g1, g2, ncol=2)
+```
+
+
+### 2. Empresa
+
+#### **VENTA POR EMPRESA (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+grupo11<-group_by(Enero, año, Empresa)        
+r11<-summarize(grupo11, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+grupo21<-group_by(EneroAcum, nuevoperiodo, Empresa)        
+r21<-summarize(grupo21, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r11 <- r11 %>%
+dplyr::filter(Empresa %in% c("Ecomedia","Prensmart")) 
+g11<-hchart(r11, type = 'column', hcaes(y = netosinrecfin_soles1, group = Empresa, x = año))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r21 <- r21 %>%
+dplyr::filter(Empresa %in% c("Ecomedia","Prensmart")) 
+g21<-hchart(r21, type = 'column', hcaes(y = netosinrecfin_soles1, group = Empresa, x = nuevoperiodo))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+hw_grid(g11, g21, ncol=2)
+```
+
+### 3. Canal
+
+#### **VENTA POR CANAL (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+grupo12<-group_by(Enero, año, Canal)        
+r12<-summarize(grupo12, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+grupo22<-group_by(EneroAcum, nuevoperiodo, Canal)        
+r22<-summarize(grupo22, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r12 <- r12 %>%
+dplyr::filter(Canal %in% c("PROGRAMATICA","FFVV")) 
+g12<-hchart(r12, type = 'column', hcaes(y = netosinrecfin_soles1, group = Canal, x = año))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r22 <- r22 %>%
+dplyr::filter(Canal %in% c("PROGRAMATICA","FFVV")) 
+g22<-hchart(r22, type = 'column', hcaes(y = netosinrecfin_soles1, group = Canal, x = nuevoperiodo))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+hw_grid(g12, g22, ncol=2)
+```
+
+### 4. Plataforma
+
+#### **VENTA POR PLATAFORMA (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+grupo13<-group_by(Enero, año, Plataforma)
+r13<-summarize(grupo13, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+grupo23<-group_by(EneroAcum, nuevoperiodo, Plataforma)
+r23<-summarize(grupo23, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r13 <- r13 %>%
+dplyr::filter(año %in% c("2016","2017","2018")) 
+g13<-hchart(r13, type = 'column', hcaes(y = netosinrecfin_soles1, group = año, x = Plataforma))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r23 <- r23 %>%
+dplyr::filter(nuevoperiodo %in% c('Aug. 2016 - Ene. 2017','Aug. 2017 - Ene. 2018')) 
+g23<-hchart(r23, type = 'column', hcaes(y = netosinrecfin_soles1, group = nuevoperiodo, x = Plataforma))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+hw_grid(g13, g23, ncol=2)
+```
+
+### 5. Formato
+
+#### **VENTA POR FORMATO (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+grupo14<-group_by(Enero, año, Producto.Digital)
+r14<-summarize(grupo14, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+grupo24<-group_by(EneroAcum, nuevoperiodo, Producto.Digital )
+r24<-summarize(grupo24, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r14 <- r14 %>%
+dplyr::filter(año %in% c("2016","2017","2018")) 
+g14<-hchart(r14, type = 'column', hcaes(y = netosinrecfin_soles1, group = año, x = Producto.Digital ))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r24 <- r24 %>%
+dplyr::filter(nuevoperiodo %in% c('Aug. 2016 - Ene. 2017','Aug. 2017 - Ene. 2018')) 
+g24<-hchart(r24, type = 'column', hcaes(y = netosinrecfin_soles1, group = nuevoperiodo, x = Producto.Digital))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+g14
+g24
+```
+
+### 6. Display
+
+#### **VENTA DE DISPLAY (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+EneroDisplay<-subset(Enero,Producto.Digital=="Display")
+grupo15<-group_by(EneroDisplay, año, Sub_producto.Digital)        
+r15<-summarize(grupo15, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+EneroAcumDisplay<-subset(EneroAcum,Producto.Digital=="Display")
+grupo25<-group_by(EneroAcumDisplay, nuevoperiodo, Sub_producto.Digital)        
+r25<-summarize(grupo25, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r15 <- r15 %>%
+dplyr::filter(Sub_producto.Digital %in% c("CPM","Sponsor")) 
+g15<-hchart(r15, type = 'column', hcaes(y = netosinrecfin_soles1, group = Sub_producto.Digital, x = año))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r25 <- r25 %>%
+dplyr::filter(Sub_producto.Digital %in% c("CPM","Sponsor"))  
+g25<-hchart(r25, type = 'column', hcaes(y = netosinrecfin_soles1, group = Sub_producto.Digital, x = nuevoperiodo))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+hw_grid(g15, g25, ncol=2)
+```
+
+### 7. Mailing
+
+#### **VENTA DE MAILING (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+EneroMailing<-subset(Enero,Producto.Digital=="Mailing")
+EneroMailing$Sub_producto.Digital<-ordered(EneroMailing$Sub_producto.Digital, levels= c("Newsletter","Email Mkt"))
+grupo16<-group_by(EneroMailing, año, Sub_producto.Digital)        
+r16<-summarize(grupo16, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+EneroAcumMailing<-subset(EneroAcum,Producto.Digital=="Mailing")
+EneroAcumMailing$Sub_producto.Digital<-ordered(EneroAcumMailing$Sub_producto.Digital, levels= c("Newsletter","Email Mkt"))
+grupo26<-group_by(EneroAcumMailing, nuevoperiodo, Sub_producto.Digital)        
+r26<-summarize(grupo26, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r16 <- r16 %>%
+dplyr::filter(Sub_producto.Digital %in% c("Newsletter","Email Mkt")) 
+g16<-hchart(r16, type = 'column', hcaes(y = netosinrecfin_soles1, group = Sub_producto.Digital, x = año))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r26 <- r26 %>%
+dplyr::filter(Sub_producto.Digital %in% c("Newsletter","Email Mkt"))
+g26<-hchart(r26, type = 'column', hcaes(y = netosinrecfin_soles1, group = Sub_producto.Digital, x = nuevoperiodo))%>%
+  hc_title(text = "Anual") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+hw_grid(g16, g26, ncol=2)
+```
+
+### 8. Performance
+
+#### **VENTA PERFORMANCE (en miles de soles)**
+```{r echo=FALSE, message=FALSE}
+EneroPerformance<-subset(Enero,Producto.Digital=="Performance")
+grupo17<-group_by(EneroPerformance, año, Sub_producto.Digital)        
+r17<-summarize(grupo17, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+EneroAcumPerformance<-subset(EneroAcum,Producto.Digital=="Performance")
+grupo27<-group_by(EneroAcumPerformance, nuevoperiodo, Sub_producto.Digital)        
+r27<-summarize(grupo27, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r17 <- r17 %>%
+dplyr::filter(año %in% c("2016","2017","2018")) 
+g17<-hchart(r17, type = 'column', hcaes(y = netosinrecfin_soles1, group = año, x = Sub_producto.Digital))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r27 <- r27 %>%
+dplyr::filter(nuevoperiodo %in% c('Aug. 2016 - Ene. 2017','Aug. 2017 - Ene. 2018')) 
+g27<-hchart(r27, type = 'column', hcaes(y = netosinrecfin_soles1, group = nuevoperiodo, x = Sub_producto.Digital))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+g17
+g27
+```
+
+### 9. Video
+
+#### **VENTA VIDEO (en miles de soles)**
+
+```{r echo=FALSE, message=FALSE}
+EneroVideo<-subset(Enero,Producto.Digital=="Video")
+grupo18<-group_by(EneroVideo, año, Sub_producto.Digital)        
+r18<-summarize(grupo18, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+EneroAcumVideo<-subset(EneroAcum,Producto.Digital=="Video")
+grupo28<-group_by(EneroAcumVideo, nuevoperiodo, Sub_producto.Digital)        
+r28<-summarize(grupo28, netosinrecfin_soles1 = round(sum(netosinrecfin_soles1)/1000,1))
+
+r18 <- r18 %>%
+dplyr::filter(año %in% c("2016","2017","2018")) 
+g18<-hchart(r18, type = 'column', hcaes(y = netosinrecfin_soles1, group = año, x = Sub_producto.Digital))%>%
+  hc_title(text = "Enero") %>%
+  hc_exporting(enabled = TRUE) %>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+r28 <- r28 %>%
+dplyr::filter(nuevoperiodo %in% c('Aug. 2016 - Ene. 2017','Aug. 2017 - Ene. 2018')) 
+g28<-hchart(r28, type = 'column', hcaes(y = netosinrecfin_soles1, group = nuevoperiodo, x = Sub_producto.Digital))%>%
+  hc_title(text = "Últimos 6 meses") %>%
+  hc_exporting(enabled = TRUE)%>%
+    hc_xAxis(title = list(text = "")) %>%
+    hc_yAxis(title = list(text = "")) 
+
+g18
+g28
+```
